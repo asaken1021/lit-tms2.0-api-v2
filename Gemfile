@@ -1,0 +1,16 @@
+ruby '2.7.1'
+source "https://rubygems.org"
+
+gem 'sinatra'
+gem 'sinatra-contrib'
+gem 'sinatra-activerecord'
+gem 'activerecord'
+gem 'bcrypt'
+# gem 'rake'
+gem 'sqlite3'
+gem 'pry'
+gem 'whenever'
+gem 'tzinfo-data'
+gem 'rmagick'
+gem 'cloudinary'
+gem 'dotenv'
