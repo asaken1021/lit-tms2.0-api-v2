@@ -23,7 +23,8 @@ RUN rbenv local 2.7.1
 
 COPY ./ /project/tms2.0_api
 
-RUN gem install bundler rake
-RUN bundle install
+RUN rbenv exec gem install bundler rake
+RUN rbenv exec bundle install
+RUN rbenv exec rake db:migrate
 
-CMD [ "ruby", "app.rb", "-o", "0.0.0.0"]
+CMD [ "rbenv", "exec", "ruby", "app.rb", "-o", "0.0.0.0"]

@@ -20,6 +20,6 @@ RUN ~/.rbenv/bin/rbenv init; exit 0
 RUN git clone https://github.com/sstephenson/ruby-build.git ~/.rbenv/plugins/ruby-build
 RUN rbenv install 2.7.1
 RUN rbenv local 2.7.1
-RUN gem install bundler rake
+RUN rbenv exec gem install bundler rake
 
 CMD [ "bash" ]
