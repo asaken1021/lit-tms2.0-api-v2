@@ -64,12 +64,12 @@ namespace '/api' do
         if req_data["password"] != req_data["password_confirmation"]
           status 400
           res_data = {
-            error: 'PASSWORD_MISMATCH'
+            error: 'Bad Request: PASSWORD_MISMATCH'
           }
         else
           status 400
           res_data = {
-            error: 'UNKNOWN_ERROR'
+            error: 'Bad Request: UNKNOWN_ERROR'
           }
         end
       end
@@ -156,7 +156,8 @@ namespace '/api' do
     post '/projects' do
       token = req_data["token"]
       if token != nil
-        user_id = JWT.decode(token, pubkey, true { algorithm: 'RS256' })["id"]
+        binding.pry
+        user_id = JWT.decode(token, pubkey, false, { algorithm: 'RS256' })[0]["id"]
         if user_id != nil
           user = User.find_by(id: user_id)
           if user != nil
@@ -199,6 +200,27 @@ namespace '/api' do
     end
 
     get '/projects/:id' do
+      project = Project.find_by(id: params[:id])
+      if project != nil
+        status 200
+        res_data = {
+          project: project
+        }
+      else
+        if params[:id] == nil
+          status 400
+          res_data = {
+            error: 'Bad Request'
+          }
+        else
+          status 404
+          res_data = {
+            error: 'Not Found'
+          }
+        end
+      end
+
+      json res_data.to_json
     end
 
     put '/projects/:id' do
