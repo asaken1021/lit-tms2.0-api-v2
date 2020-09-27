@@ -17,11 +17,17 @@ require 'jwt'
 privkey = OpenSSL::PKey::RSA.generate(2048)
 pubkey = privkey.public_key
 
-before do
-  response.headers["Allow"] = "GET, PUT, POST, DELETE, OPTIONS"
+options '*' do
+  response.headers["Access-Control-Allow-Methods"] = "GET, PUT, POST, DELETE, OPTIONS"
   response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
   response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Accept, X-User-Email, X-Auth-Token, X-Requested-With"
   response.headers["Access-Control-Allow-Credentials"] = "true"
+end
+
+before do
+  response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
+  response.headers["Access-Control-Allow-Credentials"] = "true"
+
 end
 
 def bad_request
@@ -104,6 +110,8 @@ namespace '/api' do
       }
       token = JWT.encode(payload, privkey, 'RS256')
       res_data = {
+        name: user.name,
+        id: user.id,
         token: token
       }
 
@@ -139,6 +147,8 @@ namespace '/api' do
       }
       token = JWT.encode(payload, privkey, 'RS256')
       res_data = {
+        name: user.name,
+        id: user.id,
         token: token
       }
 
@@ -150,7 +160,7 @@ namespace '/api' do
     end
 
     get '/projects' do
-      token = req_data["token"]
+      token = params["token"]
       return bad_request if token == nil
 
       user_id = JWT.decode(token, pubkey, false, { algorithm: 'RS256' })[0]["id"]
@@ -159,7 +169,7 @@ namespace '/api' do
       user = User.find_by(id: user_id)
       return unauthorized if user == nil
 
-      projects = Project.find_by(user_id: user.id)
+      projects = Project.where(user_id: user.id)
       return not_found if projects == nil
 
       status 200
@@ -214,9 +224,9 @@ namespace '/api' do
     end
 
     get '/phases' do
-      return bad_request if req_data["project_id"] == nil
+      return bad_request if params["project_id"] == nil
 
-      phases = Phase.find_by(project_id: req_data["project_id"])
+      phases = Phase.where(project_id: params["project_id"])
       return not_found if phases == nil
 
       status 200
@@ -263,9 +273,9 @@ namespace '/api' do
     end
 
     get '/tasks' do
-      return bad_request if req_data["project_id"] == nil
+      return bad_request if params["project_id"] == nil
 
-      tasks = Task.find_by(project_id: req_data["project_id"])
+      tasks = Task.where(project_id: params["project_id"])
       return not_found if tasks == nil
 
       status 200
