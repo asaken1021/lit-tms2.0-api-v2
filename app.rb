@@ -17,6 +17,9 @@ require 'jwt'
 privkey = OpenSSL::PKey::RSA.generate(2048)
 pubkey = privkey.public_key
 
+refresh_privkey = OpenSSL::PKey::RSA.generate(2048)
+refresh_pubkey = refresh_privkey.public_key
+
 options '*' do
   response.headers["Access-Control-Allow-Methods"] = "GET, PUT, POST, DELETE, OPTIONS"
   response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
@@ -81,6 +84,61 @@ def update_project_progress(id = nil)
 end
 
 namespace '/api' do
+  namespace '/dev' do
+    req_data = nil
+
+    before do
+      request.body.rewind
+
+      if request.body.string == ""
+        req_data = JSON.parse("{}")
+      else
+        req_data = JSON.parse(request.body.string)
+      end
+    end
+
+    get '/token' do
+      payload = {
+        data: "Hello, World!",
+        exp: Time.now.to_i + 15
+      }
+      token = JWT.encode(payload, privkey, 'RS256')
+      res_data = {
+        token: token
+      }
+
+      json res_data.to_json
+    end
+
+    post '/token' do
+      token = req_data["token"]
+      begin
+        data = JWT.decode(token, pubkey, true, { algorithm: 'RS256' })[0]
+      rescue => e
+        if e.class == JWT::ExpiredSignature || e.class == JWT::VerificationError
+          status 401
+          'Unauthorized'
+        end
+      end
+      status 200
+      'OK'
+    end
+
+    post '/decode' do
+      token = req_data["token"]
+      begin
+        data = JWT.decode(token, pubkey, true, { algorithm: 'RS256' })
+      rescue => e
+        if e.class == JWT::ExpiredSignature || e.class == JWT::VerificationError
+          status 401
+          return 'Unauthorized. ' + e.message
+        end
+      end
+
+      json data
+    end
+  end
+
   namespace '/v2' do
     req_data = nil
 
@@ -106,13 +164,20 @@ namespace '/api' do
 
       status 200
       payload = {
-        id: user.id
+        id: user.id,
+        exp: Time.now.to_i + 86400
+      }
+      refresh_payload = {
+        id: user.id,
+        exp: Time.now.to_i + (60 * 60)
       }
       token = JWT.encode(payload, privkey, 'RS256')
+      refresh_token = JWT.encode(refresh_payload, refresh_privkey, 'RS256')
       res_data = {
         name: user.name,
         id: user.id,
-        token: token
+        token: token,
+        refresh_token: refresh_token
       }
 
       json res_data.to_json
@@ -143,13 +208,50 @@ namespace '/api' do
 
       status 200
       payload = {
-        id: user.id
+        id: user.id,
+        exp: Time.now.to_i + 86400
+      }
+      refresh_payload = {
+        id: user.id,
+        exp: Time.now.to_i + (60 * 60)
       }
       token = JWT.encode(payload, privkey, 'RS256')
+      refresh_token = JWT.encode(refresh_payload, refresh_privkey, 'RS256')
       res_data = {
         name: user.name,
         id: user.id,
-        token: token
+        token: token,
+        refresh_token: refresh_token
+      }
+
+      json res_data.to_json
+    end
+
+    put '/session' do
+      refresh_token = req_data["refresh_token"]
+      return bad_request if refresh_token == nil
+
+      user_id = JWT.decode(refresh_token, refresh_pubkey, true, { algorithm: 'RS256' })[0]["id"]
+      return bad_request if user_id == nil
+
+      user = User.find_by(id: user_id)
+      return unauthorized if user == nil
+
+      payload = {
+        id: user.id,
+        exp: Time.now.to_i + 86400
+      }
+      refresh_payload = {
+        id: user.id,
+        exp: Time.now.to_i + (60 * 60)
+      }
+      token = JWT.encode(payload, privkey, 'RS256')
+      refresh_token = JWT.encode(refresh_payload, refresh_privkey, 'RS256')
+      res_data = {
+        name: user.name,
+        id: user.id,
+        token: token,
+        refresh_token: refresh_token
       }
 
       json res_data.to_json
@@ -163,7 +265,7 @@ namespace '/api' do
       token = params["token"]
       return bad_request if token == nil
 
-      user_id = JWT.decode(token, pubkey, false, { algorithm: 'RS256' })[0]["id"]
+      user_id = JWT.decode(token, pubkey, true, { algorithm: 'RS256' })[0]["id"]
       return bad_request if user_id == nil
 
       user = User.find_by(id: user_id)
@@ -184,7 +286,7 @@ namespace '/api' do
       token = req_data["token"]
       return bad_request if token == nil
 
-      user_id = JWT.decode(token, pubkey, false, { algorithm: 'RS256' })[0]["id"]
+      user_id = JWT.decode(token, pubkey, true, { algorithm: 'RS256' })[0]["id"]
       return bad_request if user_id == nil
 
       user = User.find_by(id: user_id)
@@ -241,7 +343,7 @@ namespace '/api' do
       token = req_data["token"]
       return bad_request if token == nil
 
-      user_id = JWT.decode(token, pubkey, false, { algorithm: 'RS256' })[0]["id"]
+      user_id = JWT.decode(token, pubkey, true, { algorithm: 'RS256' })[0]["id"]
       return unauthorized if user_id == nil
 
       return bad_request if req_data["project_id"] == nil
@@ -290,7 +392,7 @@ namespace '/api' do
       token = req_data["token"]
       return bad_request if token == nil
 
-      user_id = JWT.decode(token, pubkey, false, { algorithm: 'RS256' })[0]["id"]
+      user_id = JWT.decode(token, pubkey, true, { algorithm: 'RS256' })[0]["id"]
       return unauthorized if user_id == nil
 
       return bad_request if req_data["project_id"] == nil
@@ -326,7 +428,7 @@ namespace '/api' do
       token = req_data["token"]
       return bad_request if token == nil
 
-      user_id = JWT.decode(token, pubkey, false, { algorithm: 'RS256' })[0]["id"]
+      user_id = JWT.decode(token, pubkey, true, { algorithm: 'RS256' })[0]["id"]
       return unauthorized if user_id == nil
 
       return bad_request if params[:id] == nil
