@@ -20,19 +20,6 @@ pubkey = privkey.public_key
 refresh_privkey = OpenSSL::PKey::RSA.generate(2048)
 refresh_pubkey = refresh_privkey.public_key
 
-options '*' do
-  response.headers["Access-Control-Allow-Methods"] = "GET, PUT, POST, DELETE, OPTIONS"
-  response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
-  response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Accept, X-User-Email, X-Auth-Token, X-Requested-With"
-  response.headers["Access-Control-Allow-Credentials"] = "true"
-end
-
-before do
-  response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
-  response.headers["Access-Control-Allow-Credentials"] = "true"
-
-end
-
 def bad_request
   status 400
   res_data = {
@@ -67,6 +54,35 @@ def not_found
   }
 
   return json res_data.to_json
+end
+
+def token_check(req_token, pubkey)
+  # binding.pry
+  JWT.decode(req_token, pubkey, true, {algorithm: 'RS256'})
+  return true
+rescue => e
+  return false
+  # return unauthorized if e.class == JWT::ExpiredSignature || e.class ==JWT::VerificationError
+  # return bad_request
+end
+
+options '*' do
+  response.headers["Access-Control-Allow-Methods"] = "GET, PUT, POST, DELETE, OPTIONS"
+  response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
+  response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Accept, X-User-Email, X-Auth-Token, X-Requested-With"
+  response.headers["Access-Control-Allow-Credentials"] = "true"
+end
+
+before do
+  response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
+  response.headers["Access-Control-Allow-Credentials"] = "true"
+
+  # if params["token"] != nil ||
+  # if token_check
+  #   # Nothing to do
+  # else
+  #   return unauthorized
+  # end
 end
 
 def update_project_progress(id = nil)
@@ -150,6 +166,14 @@ namespace '/api' do
       else
         req_data = JSON.parse(request.body.string)
       end
+
+      if @env["REQUEST_METHOD"] != "OPTIONS"
+        if params["token"] != nil
+          return halt unauthorized if !token_check(params["token"], pubkey)
+        elsif req_data["token"] != nil
+          return halt unauthorized if !token_check(req_data["token"], pubkey)
+        end
+      end
     end
 
     post '/users' do
@@ -209,7 +233,7 @@ namespace '/api' do
       status 200
       payload = {
         id: user.id,
-        exp: Time.now.to_i + 86400
+        exp: Time.now.to_i + 10
       }
       refresh_payload = {
         id: user.id,
@@ -239,7 +263,7 @@ namespace '/api' do
 
       payload = {
         id: user.id,
-        exp: Time.now.to_i + 86400
+        exp: Time.now.to_i + 10
       }
       refresh_payload = {
         id: user.id,
