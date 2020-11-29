@@ -67,7 +67,7 @@ class CreateTables < ActiveRecord::Migration[5.0]
       t.timestamps null: false
     end
     create_table :nonces do |t|
-      t.string :nonces
+      t.string :nonce
       t.integer :user_id
       t.timestamps null: false
     end
