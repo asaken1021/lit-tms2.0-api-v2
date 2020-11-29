@@ -476,5 +476,40 @@ namespace '/api' do
 
       json res_data.to_json
     end
+
+    post '/line_link' do
+      user = User.find_by(mail: req_data["mail"])
+      return bad_request if user == nil
+      return bad_request if !user.authenticate(req_data["password"])
+
+      link_token = req_data["link_token"]
+      return bad_request if link_token == nil
+
+      nonce = SecureRandom.hex(64)
+      Nonce.create(
+        nonce: nonce,
+        user_id: user.id
+      )
+
+      status 200
+      res_data = {
+        line_url: "https://access.line.me/dialog/bot/accountLink?linkToken=" + link_token + "&nonce=" + nonce
+      }
+
+      json res_data.to_json
+    end
+
+    put '/line_link' do
+      user = User.find_by(id: Nonce.find_by(nonce: params["nonce"]))
+      return bad_request if user == nil
+
+      user.line_id = params["user_id"]
+      user.save(:validate => false)
+
+      status 200
+      res_data = {
+        status: "OK"
+      }
+    end
   end
 end
