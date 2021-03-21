@@ -282,7 +282,21 @@ namespace '/api' do
     end
 
     delete '/session' do
-      status 501
+      token = req_data["token"]
+      return bad_request if token == nil
+
+      user_id = JWT.decode(token, pubkey, true, { algorithm: 'RS256' })[0]["id"]
+      return bad_request if user_id == nil
+
+      user = User.find_by(id: user_id)
+      return unauthorized if user == nil
+
+      status 200
+      res_data = {
+        status: "OK"
+      }
+
+      json res_data.to_json
     end
 
     get '/projects' do
