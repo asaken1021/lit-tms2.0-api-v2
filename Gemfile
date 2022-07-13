@@ -4,7 +4,7 @@ source "https://rubygems.org"
 gem 'sinatra'
 gem 'sinatra-contrib'
 gem 'sinatra-activerecord'
-gem 'activerecord', '5.2.4.5'
+gem 'activerecord', '5.2.8.1'
 gem 'bcrypt'
 # gem 'rake'
 gem 'sqlite3'
